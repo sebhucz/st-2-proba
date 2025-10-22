@@ -56,14 +56,13 @@ def scrape_stooq_profile_with_scrapingbee(ticker):
              return None
 
         try:
+        try:
             # Parse the HTML content using lxml
-            # Use response.text as ScrapingBee usually provides decoded HTML
             tree = html.fromstring(response.text)
 
-            # --- XPath logic is now correctly inside the try block ---
-            # Define the XPath expression to find the description
-            # Looks for the table containing <b>Profil</b>, then gets the immediately following non-empty text node sibling.
-            xpath_expr = "//table[.//b[text()='Profil']]/following-sibling::text()[normalize-space()]"
+            # --- 👇👇👇 ZMIEŃ TĘ LINIĘ 👇👇👇 ---
+            xpath_expr = "//table[.//b[text()='Profil']]/following-sibling::div[1]/following-sibling::text()[normalize-space()]"
+            # --- 👆👆👆 ZMIENIONA LINIA 👆👆👆 ---
             description_nodes = tree.xpath(xpath_expr)
 
             if description_nodes:
