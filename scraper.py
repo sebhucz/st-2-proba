@@ -30,38 +30,38 @@ def scrape_stooq_profile_with_scrapingbee(ticker):
     response = None # Initialize response to avoid potential UnboundLocalError
 
     try:
-        print(f"Pobieranie strony przez ScrapingBee: {target_url}...")
+        print(f"Pobieranie strony przez ScrapingBee (z JS): {target_url}...")
         # Make the request to ScrapingBee API
         response = requests.get(
             'https://app.scrapingbee.com/api/v1/',
             params={
                 'api_key': SCRAPINGBEE_API_KEY,
                 'url': target_url,
-                # Optional parameters (uncomment if needed):
-                # 'render_js': 'false',
-                # 'premium_proxy': 'true',
+                # === Włącz renderowanie JavaScript ===
+                'render_js': 'true', # Zmienione z 'false' lub odkomentowane
+                # =====================================
+                # 'premium_proxy': 'true', # Odkomentuj, jeśli samo render_js nie wystarczy
                 # 'block_resources': 'false'
             },
-            timeout=60 # Increased timeout
+            timeout=90 # Zwiększony timeout dla renderowania JS
         )
         response.raise_for_status() # Raise an exception for bad status codes (4xx or 5xx)
 
         print(f"Status code (ScrapingBee): {response.status_code}")
+        # Odkomentuj poniższą linię do dokładniejszego debugowania, jeśli potrzebne
         # print(f"Pierwsze 500 znaków odpowiedzi (ScrapingBee):\n{response.text[:500]}\n--- Koniec pierwszych 500 znaków ---")
 
         # Check if the response text is empty or only whitespace
         if not response.text or response.text.isspace():
-             print(f"Błąd: Otrzymano pustą odpowiedź z ScrapingBee dla {target_url}", file=sys.stderr)
+             print(f"Błąd: Otrzymano pustą odpowiedź z ScrapingBee dla {target_url} (nawet z JS)", file=sys.stderr)
              return None
 
         try:
             # Parse the HTML content using lxml
             tree = html.fromstring(response.text)
 
-            # --- Updated XPath ---
-            # Try finding <b> with normalized text 'Profil', go up to the table, then find siblings
+            # Define the XPath expression (z poprzedniej poprawki)
             xpath_expr = "//b[normalize-space(text())='Profil']/ancestor::table[1]/following-sibling::div[1]/following-sibling::text()[normalize-space()]"
-            # --- End Updated XPath ---
 
             description_nodes = tree.xpath(xpath_expr)
 
@@ -75,42 +75,35 @@ def scrape_stooq_profile_with_scrapingbee(ticker):
                 return description
             else:
                 # If XPath found nothing, but parsing succeeded
-                print(f"Nie znaleziono opisu dla tickera: {ticker} przy użyciu XPath (ScrapingBee). Próba znalezienia 'Profil'...", file=sys.stderr)
+                print(f"Nie znaleziono opisu dla tickera: {ticker} przy użyciu XPath (ScrapingBee, JS włączony).", file=sys.stderr)
 
-                # --- Expanded HTML Debugging Code ---
-                print("\n--- DEBUG: Sprawdzanie struktury HTML wokół tekstu 'Profil' ---", file=sys.stderr)
-                try:
-                    # Try to find any element containing the text "Profil" more broadly
-                    profil_elements = tree.xpath("//*[contains(normalize-space(.), 'Profil')]") # Looks for 'Profil' in any element
-
-                    if profil_elements:
-                        print(f"Znaleziono {len(profil_elements)} elementów zawierających 'Profil'.", file=sys.stderr)
-                        # Take the first one found as a reference point
-                        reference_element = profil_elements[0]
-                        parent_element = reference_element.getparent() # Get the parent
-
-                        if parent_element is not None:
-                            # Print the parent's HTML to see the context
-                            print("HTML rodzica pierwszego elementu zawierającego 'Profil':", file=sys.stderr)
-                            print(etree.tostring(parent_element, pretty_print=True, encoding='unicode'), file=sys.stderr)
-                            # Also print the grandparent's HTML for broader context
-                            grandparent = parent_element.getparent()
-                            if grandparent is not None:
-                                print("\nHTML 'dziadka':", file=sys.stderr)
-                                print(etree.tostring(grandparent, pretty_print=True, encoding='unicode'), file=sys.stderr)
-
-                        else:
-                            print("Nie można znaleźć elementu nadrzędnego dla elementu zawierającego 'Profil'.", file=sys.stderr)
-                            print("HTML znalezionego elementu:", file=sys.stderr)
-                            print(etree.tostring(reference_element, pretty_print=True, encoding='unicode'), file=sys.stderr)
-                    else:
-                        print("Nie znaleziono ŻADNEGO elementu zawierającego tekst 'Profil'. Może strona jest pusta lub zupełnie inna?", file=sys.stderr)
-                        print(f"Pierwsze 1000 znaków odpowiedzi:\n{response.text[:1000]}\n---", file=sys.stderr) # Show page start
-
-                except Exception as debug_e:
-                    print(f"Błąd podczas debugowania HTML: {debug_e}", file=sys.stderr)
-                print("--- Koniec DEBUG --- \n", file=sys.stderr)
-                # --- End Expanded Debugging Code ---
+                # --- Optional HTML Debugging Code ---
+                # Możesz odkomentować ten blok, jeśli nadal potrzebujesz sprawdzić strukturę HTML
+                # print("\n--- DEBUG: Sprawdzanie struktury HTML wokół tekstu 'Profil' (JS włączony) ---", file=sys.stderr)
+                # try:
+                #     profil_elements = tree.xpath("//*[contains(normalize-space(.), 'Profil')]")
+                #     if profil_elements:
+                #         print(f"Znaleziono {len(profil_elements)} elementów zawierających 'Profil'.", file=sys.stderr)
+                #         reference_element = profil_elements[0]
+                #         parent_element = reference_element.getparent()
+                #         if parent_element is not None:
+                #             print("HTML rodzica pierwszego elementu zawierającego 'Profil':", file=sys.stderr)
+                #             print(etree.tostring(parent_element, pretty_print=True, encoding='unicode'), file=sys.stderr)
+                #             grandparent = parent_element.getparent()
+                #             if grandparent is not None:
+                #                 print("\nHTML 'dziadka':", file=sys.stderr)
+                #                 print(etree.tostring(grandparent, pretty_print=True, encoding='unicode'), file=sys.stderr)
+                #         else:
+                #             print("Nie można znaleźć elementu nadrzędnego dla elementu zawierającego 'Profil'.", file=sys.stderr)
+                #             print("HTML znalezionego elementu:", file=sys.stderr)
+                #             print(etree.tostring(reference_element, pretty_print=True, encoding='unicode'), file=sys.stderr)
+                #     else:
+                #         print("Nie znaleziono ŻADNEGO elementu zawierającego tekst 'Profil'.", file=sys.stderr)
+                #         print(f"Pierwsze 1000 znaków odpowiedzi:\n{response.text[:1000]}\n---", file=sys.stderr)
+                # except Exception as debug_e:
+                #     print(f"Błąd podczas debugowania HTML: {debug_e}", file=sys.stderr)
+                # print("--- Koniec DEBUG --- \n", file=sys.stderr)
+                # --- End Optional Debugging Code ---
 
                 return None # Return None as description was not found
 
