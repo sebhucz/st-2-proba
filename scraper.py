@@ -1,10 +1,20 @@
 import requests
-from lxml import html, etree # Import etree for specific parsing errors
+from lxml import html, etree
 import sys
+import os # Do wczytania klucza API ze zmiennej środowiskowej
 
-def scrape_stooq_profile(ticker):
+# Wczytaj klucz API ScrapingBee - najlepiej ze zmiennej środowiskowej
+SCRAPINGBEE_API_KEY = os.environ.get('SCRAPINGBEE_API_KEY')
+# Lub jeśli MUSISZ go wpisać na chwilę (NIE RÓB TEGO W KODZIE NA GITHUBIE!):
+# SCRAPINGBEE_API_KEY = "TWOJ_KLUCZ_API_TUTAJ"
+
+if not SCRAPINGBEE_API_KEY:
+    print("Błąd: Nie znaleziono klucza API ScrapingBee w zmiennej środowiskowej SCRAPINGBEE_API_KEY.", file=sys.stderr)
+    sys.exit(1) # Zakończ skrypt, jeśli nie ma klucza
+
+def scrape_stooq_profile_with_scrapingbee(ticker):
     """
-    Scrapuje opis profilu spółki ze strony Stooq.
+    Scrapuje opis profilu spółki ze strony Stooq używając ScrapingBee.
 
     Args:
         ticker (str): Symbol giełdowy spółki (np. 'wod').
@@ -12,38 +22,38 @@ def scrape_stooq_profile(ticker):
     Returns:
         str: Opis spółki lub None, jeśli nie znaleziono.
     """
-    url = f"https://stooq.pl/q/p/?s={ticker}"
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/5.3.736 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    }
+    target_url = f"https://stooq.pl/q/p/?s={ticker}"
 
     try:
-        print(f"Pobieranie strony: {url}...") # Debug info
-        response = requests.get(url, headers=headers, timeout=10)
+        print(f"Pobieranie strony przez ScrapingBee: {target_url}...")
+        response = requests.get(
+            'https://app.scrapingbee.com/api/v1/',
+            params={
+                'api_key': SCRAPINGBEE_API_KEY,
+                'url': target_url,
+                # 'render_js': 'false' # Domyślnie false, włącz (true) jeśli strona wymaga JS
+                # 'premium_proxy': 'true' # Użyj, jeśli potrzebujesz proxy rezydencjalnych (może być droższe)
+            },
+            timeout=60 # ScrapingBee może potrzebować więcej czasu
+        )
         response.raise_for_status()
-        response.encoding = response.apparent_encoding
+        # ScrapingBee zazwyczaj zwraca poprawnie zdekodowany tekst
+        # response.encoding = response.apparent_encoding # Raczej niepotrzebne
 
-        # --- DEBUG: Sprawdź zawartość odpowiedzi ---
-        print(f"Status code: {response.status_code}")
-        # print(f"Response headers: {response.headers}") # Opcjonalnie, do dalszej analizy
-        print(f"Pierwsze 500 znaków odpowiedzi:\n{response.text[:500]}\n--- Koniec pierwszych 500 znaków ---")
-        # ----------------------------------------
+        print(f"Status code (ScrapingBee): {response.status_code}")
+        print(f"Pierwsze 500 znaków odpowiedzi (ScrapingBee):\n{response.text[:500]}\n--- Koniec pierwszych 500 znaków ---")
 
-        # Sprawdź, czy odpowiedź nie jest pusta przed parsowaniem
         if not response.text or response.text.isspace():
-             print(f"Błąd: Otrzymano pustą odpowiedź ze strony {url}", file=sys.stderr)
+             print(f"Błąd: Otrzymano pustą odpowiedź z ScrapingBee dla {target_url}", file=sys.stderr)
              return None
 
-        # Parsowanie HTML za pomocą lxml
         try:
-            tree = html.fromstring(response.content)
-        except (etree.ParserError, ValueError) as parse_error: # Łapanie błędów parsowania
-            print(f"Błąd parsowania HTML: {parse_error}", file=sys.stderr)
-            # print(f"Cała odpowiedź:\n{response.text}") # Opcjonalnie, pokaż całą odpowiedź przy błędzie parsowania
+            # Używamy response.text, bo ScrapingBee zwraca zdekodowany HTML
+            tree = html.fromstring(response.text)
+        except (etree.ParserError, ValueError) as parse_error:
+            print(f"Błąd parsowania HTML (ScrapingBee): {parse_error}", file=sys.stderr)
             return None
 
-
-        # Użycie XPath do znalezienia opisu
         xpath_expr = "//table[.//b[text()='Profil']]/following-sibling::text()[normalize-space()]"
         description_nodes = tree.xpath(xpath_expr)
 
@@ -53,39 +63,29 @@ def scrape_stooq_profile(ticker):
                 description = description.split("Źródło:")[0].strip()
             return description
         else:
-            print(f"Nie znaleziono opisu dla tickera: {ticker} przy użyciu XPath.", file=sys.stderr)
-            # --- DEBUG: Pokaż fragment HTML, jeśli XPath zawiedzie ---
-            # Spróbuj znaleźć tabelę "Profil" i jej rodzica, aby zobaczyć kontekst
-            profile_header = tree.xpath("//b[text()='Profil']")
-            if profile_header:
-                 parent_td = profile_header[0].xpath("./ancestor::td")
-                 if parent_td:
-                     print("Fragment HTML wokół nagłówka 'Profil':")
-                     print(etree.tostring(parent_td[0], pretty_print=True, encoding='unicode'))
-                 else:
-                     print("Nie znaleziono rodzica <td> dla nagłówka 'Profil'.")
-            else:
-                 print("Nie znaleziono nawet nagłówka 'Profil' na stronie.")
-            # ----------------------------------------------------
+            print(f"Nie znaleziono opisu dla tickera: {ticker} przy użyciu XPath (ScrapingBee).", file=sys.stderr)
+            # Możesz dodać tu kod debugujący HTML jak wcześniej, jeśli potrzebujesz
             return None
 
     except requests.exceptions.RequestException as e:
-        print(f"Błąd połączenia ze stroną {url}: {e}", file=sys.stderr)
+        # Sprawdź, czy ScrapingBee nie zwrócił konkretnego błędu w odpowiedzi
+        error_detail = response.json().get('error', str(e)) if response and response.headers.get('Content-Type') == 'application/json' else str(e)
+        print(f"Błąd połączenia przez ScrapingBee dla {target_url}: {error_detail}", file=sys.stderr)
         return None
     except Exception as e:
-        # Usunięto ogólny handler, aby zobaczyć bardziej szczegółowe błędy
-        print(f"Wystąpił nieoczekiwany błąd: {e}", file=sys.stderr)
+        print(f"Wystąpił nieoczekiwany błąd (ScrapingBee): {e}", file=sys.stderr)
         import traceback
-        traceback.print_exc() # Wydrukuj pełny traceback błędu
+        traceback.print_exc()
         return None
 
 # --- Uruchomienie scrapera ---
 if __name__ == "__main__":
     ticker_symbol = "wod"
-    profile_description = scrape_stooq_profile(ticker_symbol)
+    # Używamy nowej funkcji
+    profile_description = scrape_stooq_profile_with_scrapingbee(ticker_symbol)
 
     if profile_description:
-        print(f"\nOpis profilu dla {ticker_symbol.upper()}:\n")
+        print(f"\nOpis profilu dla {ticker_symbol.upper()} (przez ScrapingBee):\n")
         print(profile_description)
     else:
-        print(f"\nNie udało się pobrać opisu profilu dla {ticker_symbol.upper()}.")
+        print(f"\nNie udało się pobrać opisu profilu dla {ticker_symbol.upper()} (przez ScrapingBee).")
