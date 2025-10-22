@@ -24,8 +24,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run scraper
-        # 👇👇👇 Dodaj tę sekcję 'env:' 👇👇👇
         env:
           SCRAPINGBEE_API_KEY: ${{ secrets.SCRAPINGBEE_API_KEY }}
-        # 👆👆👆 Koniec dodanej sekcji 👆👆👆
-        run: python scraper.py # Ten krok teraz będzie miał dostęp do zmiennej
+          # 👇👇👇 Dodaj tę linię 👇👇👇
+          PYTHONIOENCODING: 'UTF-8'
+          # 👆👆👆 Dodana linia 👆👆👆
+        run: python scraper.py
