@@ -78,22 +78,27 @@ def scrape_stooq_profile_with_scrapingbee(ticker):
 
                 # --- Optional HTML Debugging Code ---
                 # Uncomment this section if you need to inspect the HTML structure when XPath fails
+               # --- 👇 Poprawione wcięcia w tym bloku 👇 ---
                 print("\n--- DEBUG: Sprawdzanie struktury HTML wokół nagłówka 'Profil' ---", file=sys.stderr)
-                try:
-                     profile_table = tree.xpath("//table[.//b[text()='Profil']]")
-                     if profile_table:
-                         parent_element = profile_table[0].getparent()
-                         if parent_element is not None:
-                             print("HTML rodzica tabeli 'Profil':", file=sys.stderr)
-                             print(etree.tostring(parent_element, pretty_print=True, encoding='unicode'), file=sys.stderr)
-                         else:
-                             print("Nie można znaleźć elementu nadrzędnego dla tabeli 'Profil'.", file=sys.stderr)
-                     else:
-                         print("Nie znaleziono nawet tabeli zawierającej nagłówek 'Profil'.", file=sys.stderr)
-                 except Exception as debug_e:
-                     print(f"Błąd podczas debugowania HTML: {debug_e}", file=sys.stderr)
-                 print("--- Koniec DEBUG --- \n", file=sys.stderr)
-                # --- End Optional Debugging Code ---
+                try: # To 'try' jest wcięte na tym samym poziomie co 'print' powyżej
+                    profile_table = tree.xpath("//table[.//b[text()='Profil']]")
+                    if profile_table:
+                        parent_element = profile_table[0].getparent() # Pobierz rodzica tabeli (prawdopodobnie <td>)
+                        if parent_element is not None:
+                             # Wydrukuj kod HTML rodzica, żeby zobaczyć co jest obok tabeli
+                            print("HTML rodzica tabeli 'Profil':", file=sys.stderr) # Wcięte o 4 spacje względem 'try'
+                            print(etree.tostring(parent_element, pretty_print=True, encoding='unicode'), file=sys.stderr) # Wcięte o 4 spacje względem 'try'
+                        else:
+                            print("Nie można znaleźć elementu nadrzędnego dla tabeli 'Profil'.", file=sys.stderr) # Wcięte o 4 spacje względem 'try'
+                    else:
+                        print("Nie znaleziono nawet tabeli zawierającej nagłówek 'Profil'.", file=sys.stderr) # Wcięte o 4 spacje względem 'try'
+                # To 'except' musi być na tym samym poziomie wcięcia co odpowiadające mu 'try'
+                except Exception as debug_e:
+                    print(f"Błąd podczas debugowania HTML: {debug_e}", file=sys.stderr) # Wcięte o 4 spacje względem 'except'
+
+                # Ten 'print' jest poza blokiem try/except, na tym samym poziomie co 'try'
+                print("--- Koniec DEBUG --- \n", file=sys.stderr)
+                # --- 👆 Koniec poprawionego bloku 👆 ---
 
                 return None # Return None as description was not found
 
