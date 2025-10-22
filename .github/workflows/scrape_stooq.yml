@@ -1,27 +1,31 @@
-name: Scrape Stooq Profile # Nazwa workflow widoczna w zakładce Actions
+name: Scrape Stooq Profile
 
 on:
-  workflow_dispatch: # Pozwala na ręczne uruchomienie workflow z interfejsu GitHub
+  workflow_dispatch:
   schedule:
-    - cron: '0 8 * * 1' # Uruchamia workflow automatycznie o 8:00 UTC w każdy poniedziałek
+    - cron: '0 8 * * 1'
 
 jobs:
   scrape:
-    runs-on: ubuntu-latest # Używa najnowszej stabilnej wersji Ubuntu jako runnera
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository # Pobiera kod repozytorium do runnera
-        uses: actions/checkout@v4 # Używa gotowej akcji do pobierania kodu
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python # Konfiguruje środowisko Python
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x' # Używa najnowszej dostępnej wersji Python 3
+          python-version: '3.x'
 
-      - name: Install dependencies # Instaluje wymagane biblioteki Python
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt # Instaluje biblioteki z pliku requirements.txt
+          pip install -r requirements.txt
 
-      - name: Run scraper # Uruchamia skrypt scrapera
-        run: python scraper.py # Zakłada, że główny plik scrapera nazywa się scraper.py
+      - name: Run scraper
+        # 👇👇👇 Dodaj tę sekcję 'env:' 👇👇👇
+        env:
+          SCRAPINGBEE_API_KEY: ${{ secrets.SCRAPINGBEE_API_KEY }}
+        # 👆👆👆 Koniec dodanej sekcji 👆👆👆
+        run: python scraper.py # Ten krok teraz będzie miał dostęp do zmiennej
