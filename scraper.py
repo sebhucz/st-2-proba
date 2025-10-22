@@ -55,14 +55,13 @@ def scrape_stooq_profile_with_scrapingbee(ticker):
              print(f"Błąd: Otrzymano pustą odpowiedź z ScrapingBee dla {target_url}", file=sys.stderr)
              return None
 
-        try:
+        # --- 👇 Poprawiony blok try/except dla parsowania 👇 ---
         try:
             # Parse the HTML content using lxml
             tree = html.fromstring(response.text)
 
-            # --- 👇👇👇 ZMIEŃ TĘ LINIĘ 👇👇👇 ---
+            # Define the XPath expression to find the description
             xpath_expr = "//table[.//b[text()='Profil']]/following-sibling::div[1]/following-sibling::text()[normalize-space()]"
-            # --- 👆👆👆 ZMIENIONA LINIA 👆👆👆 ---
             description_nodes = tree.xpath(xpath_expr)
 
             if description_nodes:
@@ -104,6 +103,7 @@ def scrape_stooq_profile_with_scrapingbee(ticker):
             # Uncomment to print the full response text if parsing fails
             # print(f"Cała odpowiedź:\n{response.text}", file=sys.stderr)
             return None # Return None on parsing error
+        # --- 👆 Koniec poprawionego bloku 👆 ---
 
     except requests.exceptions.RequestException as e:
         # Handle connection errors or bad HTTP statuses from ScrapingBee
