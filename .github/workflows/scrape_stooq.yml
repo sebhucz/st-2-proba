@@ -1,0 +1,27 @@
+name: Scrape Stooq Profile # Nazwa workflow widoczna w zakładce Actions
+
+on:
+  workflow_dispatch: # Pozwala na ręczne uruchomienie workflow z interfejsu GitHub
+  schedule:
+    - cron: '0 8 * * 1' # Uruchamia workflow automatycznie o 8:00 UTC w każdy poniedziałek
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest # Używa najnowszej stabilnej wersji Ubuntu jako runnera
+
+    steps:
+      - name: Checkout repository # Pobiera kod repozytorium do runnera
+        uses: actions/checkout@v4 # Używa gotowej akcji do pobierania kodu
+
+      - name: Set up Python # Konfiguruje środowisko Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x' # Używa najnowszej dostępnej wersji Python 3
+
+      - name: Install dependencies # Instaluje wymagane biblioteki Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt # Instaluje biblioteki z pliku requirements.txt
+
+      - name: Run scraper # Uruchamia skrypt scrapera
+        run: python scraper.py # Zakłada, że główny plik scrapera nazywa się scraper.py
